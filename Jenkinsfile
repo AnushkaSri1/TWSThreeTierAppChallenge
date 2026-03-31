@@ -9,12 +9,6 @@ pipeline {
 
     stages {
 
-        stage('Clone Repository') {
-            steps {
-                git 'https://github.com/AnushkaSri1/TWSThreeTierAppChallenge.git'
-            }
-        }
-
         stage('Build Docker Images') {
             steps {
                 sh 'docker build -t frontend ./Application-Code/frontend'
