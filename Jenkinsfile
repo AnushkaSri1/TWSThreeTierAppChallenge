@@ -3,12 +3,7 @@ pipeline {
 	label '3-tier'
 }
 
-    environment {
-        AWS_ACCESS_KEY_ID_CREDS = credentials('aws-credentials')
-        AWS_SECRET_ACCESS_KEY_CREDS = credentials('aws-credentials')
-        KUBE_CONFIG_CREDS = credentials('kubeconfig')
-    }
-
+   
     stages {
 
         stage('Checkout') {
@@ -19,28 +14,26 @@ pipeline {
             }
         }
 
-        stage('Build Frontend Docker Image') {
-            steps {
-                script {
-                    withEnv([
-                        "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID_CREDS}",
-                        "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY_CREDS}"
-                    ]) {
+       stage('Build Frontend Docker Image') {
+ 	   steps {
+        	script {
+            	     withCredentials([[
+               		 $class: 'AmazonWebServicesCredentialsBinding',
+                	credentialsId: 'aws-credentials'
+            ]]) {
 
-                        sh "aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID_CREDS}"
-                        sh "aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY_CREDS}"
-                        sh "aws configure set default.region us-west-2"
+                sh '''
+                aws configure set region us-west-2
+                aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 533267244722.dkr.ecr.us-west-2.amazonaws.com
 
-                        sh "aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 533267244722.dkr.ecr.us-west-2.amazonaws.com"
-
-                        sh "docker build -t workshop-frontend Application-Code/frontend"
-                        sh "docker tag workshop-frontend:latest 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:frontend"
-                        sh "docker push 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:frontend"
-                    }
-                }
+                docker build -t workshop-frontend Application-Code/frontend
+                docker tag workshop-frontend:latest 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:frontend
+                docker push 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:frontend
+                '''
             }
         }
-
+    }
+}
         stage('Build Backend Docker Image') {
             steps {
                 script {
