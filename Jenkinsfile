@@ -1,106 +1,109 @@
 pipeline {
     agent {
-	label '3-tier'
-}
+        label '3-tier'
+    }
 
-   
+    environment {
+        ECR_REGISTRY = "533267244722.dkr.ecr.us-west-2.amazonaws.com"
+        AWS_REGION   = "us-west-2"
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                script {
-                    git url: "https://github.com/AnushkaSri1/TWSThreeTierAppChallenge.git", branch: "main"
+                git url: "https://github.com/AnushkaSri1/TWSThreeTierAppChallenge.git",
+                    branch: "main"
+            }
+        }
+
+        stage('ECR Login') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-credentials'
+                ]]) {
+                    sh '''
+                        aws ecr get-login-password --region $AWS_REGION \
+                        | docker login --username AWS --password-stdin $ECR_REGISTRY
+                    '''
                 }
             }
         }
 
-       stage('Build Frontend Docker Image') {
- 	   steps {
-        	script {
-            	     withCredentials([[
-               		 $class: 'AmazonWebServicesCredentialsBinding',
-                	credentialsId: 'aws-credentials'
-            ]]) {
-
+        stage('Build Frontend Docker Image') {
+            steps {
                 sh '''
-                aws configure set region us-west-2
-                aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 533267244722.dkr.ecr.us-west-2.amazonaws.com
-
-                docker build -t workshop-frontend Application-Code/frontend
-                docker tag workshop-frontend:latest 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:frontend
-                docker push 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:frontend
+                    docker build -t workshop-frontend Application-Code/frontend
+                    docker tag workshop-frontend:latest $ECR_REGISTRY/workshop:frontend
+                    docker push $ECR_REGISTRY/workshop:frontend
                 '''
             }
         }
-    }
-}
+
         stage('Build Backend Docker Image') {
             steps {
-                script {
-                    sh "docker build -t workshop-backend Application-Code/backend"
-                    sh "docker tag workshop-backend:latest 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:backend"
-                    sh "docker push 533267244722.dkr.ecr.us-west-2.amazonaws.com/workshop:backend"
-                }
+                sh '''
+                    docker build -t workshop-backend Application-Code/backend
+                    docker tag workshop-backend:latest $ECR_REGISTRY/workshop:backend
+                    docker push $ECR_REGISTRY/workshop:backend
+                '''
             }
         }
 
         stage('Deploy Database') {
             steps {
-                script {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-
-                        sh """
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/database/secrets.yaml
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/database/pv.yaml
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/database/pvc.yaml
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/database/deployment.yaml
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/database/service.yaml
-                        """
-                    }
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
+                    sh '''
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/secrets.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/pv.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/pvc.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/service.yaml
+                    '''
                 }
             }
         }
 
         stage('Deploy Backend') {
             steps {
-                script {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-
-                        sh """
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/backend/deployment.yaml
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/backend/service.yaml
-                        """
-                    }
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
+                    sh '''
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/backend/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/backend/service.yaml
+                    '''
                 }
             }
         }
 
         stage('Deploy Frontend') {
             steps {
-                script {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-
-                        sh """
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/frontend/deployment.yaml
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/frontend/service.yaml
-                        """
-                    }
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
+                    sh '''
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/frontend/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/frontend/service.yaml
+                    '''
                 }
             }
         }
 
         stage('Apply Ingress') {
             steps {
-                script {
-                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-
-                        sh """
-                        kubectl --kubeconfig=${KUBE_CONFIG} apply -f Kubernetes-Manifest-file/ingress.yaml
-                        """
-                    }
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
+                    sh '''
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/ingress.yaml
+                    '''
                 }
             }
         }
+    }
 
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs above.'
+        }
     }
 }
