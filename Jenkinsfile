@@ -55,11 +55,11 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
                     sh '''
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/secrets.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/pv.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/pvc.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/deployment.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/database/service.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/database/secrets.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/database/pv.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/database/pvc.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/database/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/database/service.yaml
                     '''
                 }
             }
@@ -69,8 +69,8 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
                     sh '''
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/backend/deployment.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/backend/service.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/backend/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/backend/service.yaml
                     '''
                 }
             }
@@ -80,8 +80,8 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
                     sh '''
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/frontend/deployment.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/frontend/service.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/frontend/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/frontend/service.yaml
                     '''
                 }
             }
@@ -91,7 +91,7 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
                     sh '''
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifest-file/ingress.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/ingress.yaml
                     '''
                 }
             }
