@@ -1,11 +1,9 @@
 pipeline {
-    agent {
-        label '3-tier'
-    }
+    agent any
 
     environment {
-        ECR_REGISTRY = "533267244722.dkr.ecr.us-west-2.amazonaws.com"
-        AWS_REGION   = "us-west-2"
+        ECR_REGISTRY = "051602877417.dkr.ecr.us-east-1.amazonaws.com"
+        AWS_REGION   = "us-east-1"
     }
 
     stages {
@@ -31,66 +29,38 @@ pipeline {
             }
         }
 
-        stage('Build Frontend Docker Image') {
+        stage('Build Frontend') {
             steps {
                 sh '''
-                    docker build -t workshop-frontend Application-Code/frontend
-                    docker tag workshop-frontend:latest $ECR_REGISTRY/workshop:frontend
-                    docker push $ECR_REGISTRY/workshop:frontend
+                    docker build -t three-tier-frontend Application-Code/frontend
+                    docker tag three-tier-frontend:latest $ECR_REGISTRY/three-tier-frontend:latest
+                    docker push $ECR_REGISTRY/three-tier-frontend:latest
                 '''
             }
         }
 
-        stage('Build Backend Docker Image') {
+        stage('Build Backend') {
             steps {
                 sh '''
-                    docker build -t workshop-backend Application-Code/backend
-                    docker tag workshop-backend:latest $ECR_REGISTRY/workshop:backend
-                    docker push $ECR_REGISTRY/workshop:backend
+                    docker build -t three-tier-backend Application-Code/backend
+                    docker tag three-tier-backend:latest $ECR_REGISTRY/three-tier-backend:latest
+                    docker push $ECR_REGISTRY/three-tier-backend:latest
                 '''
             }
         }
 
-        stage('Deploy Database') {
+        stage('Deploy to EKS') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
                     sh '''
                         kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/secrets.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/pv.yaml
                         kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/pvc.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/deployment.yaml
                         kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/service.yaml
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy Backend') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-                    sh '''
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Backend/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/deployment.yaml
                         kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Backend/service.yaml
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy Frontend') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-                    sh '''
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Frontend/deployment.yaml
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Backend/deployment.yaml
                         kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Frontend/service.yaml
-                    '''
-                }
-            }
-        }
-
-        stage('Apply Ingress') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-                    sh '''
+                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Frontend/deployment.yaml
                         kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/ingress.yaml
                     '''
                 }
