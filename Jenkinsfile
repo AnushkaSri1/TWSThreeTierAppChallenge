@@ -1,21 +1,17 @@
 pipeline {
     agent any
-
     environment {
         ECR_REGISTRY = "051602877417.dkr.ecr.us-east-1.amazonaws.com"
         AWS_REGION   = "us-east-1"
         CLUSTER_NAME = "three-tier-cluster"
     }
-
     stages {
-
         stage('Checkout') {
             steps {
                 git url: "https://github.com/AnushkaSri1/TWSThreeTierAppChallenge.git",
                     branch: "main"
             }
         }
-
         stage('ECR Login') {
             steps {
                 withCredentials([[
@@ -29,7 +25,6 @@ pipeline {
                 }
             }
         }
-
         stage('Build Frontend') {
             steps {
                 sh '''
@@ -39,7 +34,6 @@ pipeline {
                 '''
             }
         }
-
         stage('Build Backend') {
             steps {
                 sh '''
@@ -49,11 +43,11 @@ pipeline {
                 '''
             }
         }
-
         stage('Deploy to EKS') {
             steps {
                 sh '''
                     aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+                    kubectl create namespace three-tier --dry-run=client -o yaml | kubectl apply -f -
                     kubectl apply -f Kubernetes-Manifests-file/Database/secrets.yaml
                     kubectl apply -f Kubernetes-Manifests-file/Database/pvc.yaml
                     kubectl apply -f Kubernetes-Manifests-file/Database/service.yaml
@@ -67,7 +61,6 @@ pipeline {
             }
         }
     }
-
     post {
         success {
             echo 'Pipeline completed successfully!'
