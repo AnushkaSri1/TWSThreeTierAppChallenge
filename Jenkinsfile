@@ -4,6 +4,7 @@ pipeline {
     environment {
         ECR_REGISTRY = "051602877417.dkr.ecr.us-east-1.amazonaws.com"
         AWS_REGION   = "us-east-1"
+        CLUSTER_NAME = "three-tier-cluster"
     }
 
     stages {
@@ -51,19 +52,18 @@ pipeline {
 
         stage('Deploy to EKS') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG')]) {
-                    sh '''
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/secrets.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/pvc.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/service.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Database/deployment.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Backend/service.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Backend/deployment.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Frontend/service.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/Frontend/deployment.yaml
-                        kubectl --kubeconfig=$KUBE_CONFIG apply -f Kubernetes-Manifests-file/ingress.yaml
-                    '''
-                }
+                sh '''
+                    aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+                    kubectl apply -f Kubernetes-Manifests-file/Database/secrets.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/Database/pvc.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/Database/service.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/Database/deployment.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/Backend/service.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/Backend/deployment.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/Frontend/service.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/Frontend/deployment.yaml
+                    kubectl apply -f Kubernetes-Manifests-file/ingress.yaml
+                '''
             }
         }
     }
